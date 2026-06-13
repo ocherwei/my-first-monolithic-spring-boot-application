@@ -1,36 +1,52 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import './App.scss'
 
 function App() {
   const [grass, setGrass] = useState(100) // 0-100
   const [wool, setWool] = useState(0)    // 0-100
-  const [gold, setGold] = useState(0)
-  const [sheep, setSheep] = useState(1)  // number of sheep (fixed for now)
+  const [gold, setGold] = useState(10)
+  const [sheep, setSheep] = useState(1)  // number of sheep
+  const sheepRef = useRef(sheep)
 
-  // Grass decays: 10% every 5 minutes
+  // Keep ref in sync with sheep state
   useEffect(() => {
+    sheepRef.current = sheep
+  }, [sheep])
+
+  // Grass decays: 10% + 5% per extra sheep every 5 minutes
+  useEffect(() => {
+    const grassDeduction = 10 + Math.max(0, sheep - 1) * 5
     const interval = setInterval(() => {
-      setGrass((g) => Math.max(0, g - 10))
+      setGrass((g) => Math.max(0, g - grassDeduction))
     }, 5 * 60 * 1000)
 
     return () => clearInterval(interval)
-  }, [])
+  }, [sheep])
 
-  // Wool fills: 100% every 1 minute, auto-shears to gold
+  // Wool fills: 1% * sheep per second
   useEffect(() => {
+    const currentSheep = sheepRef.current
     const interval = setInterval(() => {
       setWool((w) => {
         if (w >= 100) {
-          // Shear: wool → 0, gold += 5
-          setGold((g) => g + 5)
+          // Shear: wool → 0, gold += 5 * sheep
+          setGold((g) => g + 5 * currentSheep)
           return 0
         }
-        return w + 10 // 10% per minute
+        return Math.min(100, w + 1 * currentSheep)
       })
     }, 1000)
 
     return () => clearInterval(interval)
   }, [])
+
+  // Buy sheep: costs 15 gold
+  const buySheep = () => {
+    if (gold >= 15) {
+      setGold((g) => g - 15)
+      setSheep((s) => s + 1)
+    }
+  }
 
   return (
     <div className="farm">
@@ -56,7 +72,21 @@ function App() {
         </div>
       </div>
 
-      <div className="sheep-row">🐑</div>
+      <div className="sheep-row">
+        <span className="sheep-label">
+          {Array.from({ length: sheep }, (_, i) => (
+            <span key={i} className="sheep">🐑</span>
+          ))}
+        </span>
+      </div>
+
+      <button
+        className="buy-btn"
+        onClick={buySheep}
+        disabled={gold < 15}
+      >
+        Buy Sheep - 15 <span className="btn-coin">🪙</span>
+      </button>
 
       <div className="gold-display">
         <span className="coin">🪙</span> {gold}
