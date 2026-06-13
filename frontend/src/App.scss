@@ -1,21 +1,86 @@
-// SCSS variables — change colors in one place
 $bg-color: #0f0f0f;
 $text-color: #ffffff;
-$font-size: clamp(2.5rem, 8vw, 5rem);
+$green: #4caf50;
+$wool-color: #f5e6c8;
+$gold-color: #ffd700;
 
-// Dark-mode landing page — centered "Hello World"
-.landing {
+.farm {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
   width: 100%;
   height: 100vh;
   background: $bg-color;
+  gap: 32px;
 
-  .title {
-    font-size: $font-size;
+  .farm-title {
+    font-size: clamp(1.5rem, 4vw, 2.5rem);
     color: $text-color;
     font-weight: 300;
+    letter-spacing: 0.05em;
+    margin: 0 0 12px;
+  }
+
+  .grass-row,
+  .wool-row {
+    width: 240px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+
+    .bar-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+  }
+
+  .bar-label {
+    color: #888;
+    font-size: 13px;
+    text-transform: uppercase;
     letter-spacing: 0.1em;
+  }
+
+  .bar {
+    width: 100%;
+    height: 16px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    overflow: hidden;
+
+    .fill {
+      height: 100%;
+      transition: width 0.3s ease;
+
+      &.grass {
+        background: $green;
+      }
+
+      &.wool {
+        background: $wool-color;
+      }
+    }
+  }
+
+  .bar-value {
+    color: #666;
+    font-size: 12px;
+  }
+
+  .gold-display {
+    color: $gold-color;
+    font-size: 24px;
+    font-weight: 300;
+    letter-spacing: 0.05em;
+
+    .coin {
+      user-select: none;
+      filter: sepia(1) saturate(2);
+    }
   }
 }
