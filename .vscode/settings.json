@@ -1,0 +1,7 @@
+{
+    "java.configuration.updateBuildConfiguration": "interactive",
+    "java.project.excludes": [
+        "**/spring-petclinic/**"
+    ],
+    "java.compile.nullAnalysis.mode": "disabled"
+}
