@@ -1,8 +1,9 @@
 export interface GameState {
-  grass: number    // 0-100
-  wool: number     // 0-100
+  grass: number       // 0-100
+  wool: number        // 0-100
   gold: number
   sheep: number
+  autoBuySheep: boolean  // auto-purchase sheep when gold >= 15
 }
 
 export interface Actions {
@@ -14,11 +15,17 @@ export const initialState: GameState = {
   wool: 0,
   gold: 10,
   sheep: 1,
+  autoBuySheep: false,
 }
 
 export function grassDecay(state: GameState): GameState {
   const deduction = 10 + Math.max(0, state.sheep - 1) * 5
-  return { ...state, grass: Math.max(0, state.grass - deduction) }
+  const newGrass = state.grass - deduction
+  if (newGrass <= 0) {
+    // Grass hits 0 → reset to full (100)
+    return { ...state, grass: 100 }
+  }
+  return { ...state, grass: newGrass }
 }
 
 export function woolGrow(state: GameState): GameState {

@@ -84,6 +84,34 @@ $gold-color: #ffd700;
     }
   }
 
+  .buy-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .auto-toggle-btn {
+    padding: 8px 14px;
+    font-size: 12px;
+    background: #1a1a1a;
+    color: #555;
+    border: 1px solid #333;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+
+    &:hover {
+      background: #222;
+    }
+
+    &.on {
+      color: $green;
+      border-color: $green;
+    }
+  }
+
   .buy-btn {
     padding: 12px 24px;
     font-size: 14px;

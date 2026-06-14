@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './App.scss'
 import {
   initialState,
@@ -27,6 +27,26 @@ function App() {
 
     return () => clearInterval(interval)
   }, [])
+
+  // Auto-buy: purchase when gold >= 15 and increases past the last gold value.
+  // When gold drops (manual purchase / higher deduction), reset the baseline
+  // so future gold increases can trigger purchases again.
+  const lastBoughtGold = useRef<number>(state.gold)
+
+  useEffect(() => {
+    if (state.autoBuySheep) {
+      if (state.gold < lastBoughtGold.current) {
+        // Gold dropped — reset baseline so next increase triggers a buy
+        lastBoughtGold.current = 0
+      } else if (state.gold >= 15 && state.gold > lastBoughtGold.current) {
+        lastBoughtGold.current = state.gold
+        const next = doBuySheep(state)
+        if (next) setState(next)
+      }
+    } else {
+      lastBoughtGold.current = 0
+    }
+  }, [state.gold, state.autoBuySheep, state])
 
   // Buy sheep: costs 15 gold
   const buySheep = () => {
@@ -66,13 +86,23 @@ function App() {
         </span>
       </div>
 
-      <button
-        className="buy-btn"
-        onClick={buySheep}
-        disabled={state.gold < 15}
-      >
-        Buy Sheep - 15 <span className="btn-coin">🪙</span>
-      </button>
+      <div className="buy-controls">
+        <button
+          className="buy-btn"
+          onClick={buySheep}
+          disabled={state.gold < 15 || state.autoBuySheep}
+        >
+          Buy Sheep - 15 <span className="btn-coin">🪙</span>
+        </button>
+        <button
+          className={`auto-toggle-btn${state.autoBuySheep ? ' on' : ''}`}
+          onClick={() =>
+            setState((prev) => ({ ...prev, autoBuySheep: !prev.autoBuySheep }))
+          }
+        >
+          Auto: {state.autoBuySheep ? 'ON' : 'OFF'}
+        </button>
+      </div>
 
       <div className="gold-display">
         <span className="coin">🪙</span> {state.gold}

@@ -9,7 +9,13 @@ import {
 
 describe('initialState', () => {
   it('starts with correct values', () => {
-    expect(initialState).toEqual({ grass: 100, wool: 0, gold: 10, sheep: 1 })
+    expect(initialState).toEqual({
+      grass: 100,
+      wool: 0,
+      gold: 10,
+      sheep: 1,
+      autoBuySheep: false,
+    })
   })
 })
 
@@ -29,10 +35,10 @@ describe('grassDecay', () => {
     expect(result.grass).toBe(30)
   })
 
-  it('clamps at 0 (no negative grass)', () => {
+  it('resets to 100 when grass hits 0 or below', () => {
     const result = grassDecay({ ...initialState, grass: 3, sheep: 5 })
-    // deduction = 10 + (5-1)*5 = 30
-    expect(result.grass).toBe(0)
+    // deduction = 10 + (5-1)*5 = 30 → 3 - 30 = -27 → resets to 100
+    expect(result.grass).toBe(100)
   })
 
   it('does not change other state fields', () => {
