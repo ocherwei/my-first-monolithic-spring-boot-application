@@ -79,11 +79,16 @@ function App() {
       </div>
 
       <div className="sheep-row">
-        <span className="sheep-label">
-          {Array.from({ length: state.sheep }, (_, i) => (
-            <span key={i} className="sheep">🐑</span>
-          ))}
-        </span>
+        {state.sheep <= 5
+          ? Array.from({ length: state.sheep }, (_, i) => (
+              <span key={i} className="sheep">🐑</span>
+            ))
+          : (
+              <>
+                <span className="sheep">🐑</span>
+                <span className="sheep-count">×{state.sheep}</span>
+              </>
+            )}
       </div>
 
       <div className="buy-controls">
