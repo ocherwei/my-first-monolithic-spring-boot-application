@@ -7,8 +7,23 @@ import {
   buySheep as doBuySheep,
 } from './gameLogic'
 
+const STORAGE_KEY = 'farmState'
+
+function loadFromStorage() {
+  try {
+    const saved = sessionStorage.getItem(STORAGE_KEY)
+    if (saved) return JSON.parse(saved)
+  } catch { /* ignore parse errors */ }
+  return initialState
+}
+
 function App() {
-  const [state, setState] = useState(initialState)
+  const [state, setState] = useState(loadFromStorage)
+
+  // Auto-save to sessionStorage on every state change
+  useEffect(() => {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+  }, [state])
 
   // Grass decays: 10% + 5% per extra sheep every 5 minutes
   useEffect(() => {
