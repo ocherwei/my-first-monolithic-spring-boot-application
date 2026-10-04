@@ -1,5 +1,5 @@
 export interface GameState {
-  grass: number       // 0-100 (0 = pasture empty)
+  grass: number       // 0-100 (0 = pasture empty, stays at 0 when overgrazed)
   hay: number         // 0-100 (stored in silo, fed when grass = 0)
   wool: number        // 0-100
   gold: number
@@ -22,48 +22,47 @@ export const initialState: GameState = {
   deathCounter: 0,
 }
 
-const GrassRegen = 9  // 9% per 2.5-min tick
 const PerSheepGrassCost = 3  // 3% per sheep per tick
 const PerSheepHayCost = 5  // 5% per sheep per tick (when grass = 0)
 const DeathInterval = 3  // 1 sheep dies every 3 ticks (7.5 minutes)
 
+// Exponential regen: 0.01 * grass² — scales with current grass level
+// High grass → fast regen (produces hay when over 100)
+// Low grass → slow regen (stays low, drains to 0 when overgrazed)
+
 export function grassDecay(state: GameState): GameState {
-  if (state.sheep === 0) return state  // no sheep, no consumption
+  if (state.sheep === 0) return state
 
   // Phase 1: grass available
   if (state.grass > 0) {
     const consumption = state.sheep * PerSheepGrassCost
-    // Consume first, then regenerate, then cap at 100
     const afterConsumption = Math.max(0, state.grass - consumption)
-    const afterRegen = afterConsumption + GrassRegen
-    const newHay = Math.max(0, state.hay)  // carry forward
+    const regen = 0.01 * afterConsumption * afterConsumption  // exponential
+    const afterRegen = afterConsumption + regen
 
-    // Overflow: grass capped at 100, excess → hay (capped at 100)
+    // Overflow: grass capped at 100, excess → hay
     if (afterRegen >= 100) {
       const overflow = afterRegen - 100
       const cappedHay = Math.min(100, state.hay + overflow)
       return { ...state, grass: 100, hay: cappedHay, deathCounter: 0 }
     }
 
-    // Not at 100 — no overflow, grass = afterRegen
-    return { ...state, grass: afterRegen, hay: newHay, deathCounter: 0 }
+    // Draining: grass = capped to 0 minimum (no negative %)
+    return { ...state, grass: afterRegen, hay: state.hay, deathCounter: 0 }
   }
 
-  // Grass is 0 — check hay
+  // Phase 2: grass = 0, hay available
   if (state.hay > 0) {
     const consumption = state.sheep * PerSheepHayCost
     const newHay = Math.max(0, state.hay - consumption)
     const newCounter = state.deathCounter + 1
-
-    // Hay empty — transition to death phase
     if (newHay <= 0) {
       return { ...state, hay: 0, deathCounter: newCounter }
     }
-
     return { ...state, hay: newHay, deathCounter: 0 }
   }
 
-  // Phase 3: grass and hay both 0, start killing sheep
+  // Phase 3: death
   const newCounter = state.deathCounter + 1
   if (newCounter >= DeathInterval && state.sheep > 0) {
     return { ...state, deathCounter: 0, sheep: state.sheep - 1 }
@@ -71,14 +70,35 @@ export function grassDecay(state: GameState): GameState {
   return { ...state, deathCounter: newCounter }
 }
 
+export function getGrassRate(state: GameState): number {
+  // Returns net grass change per tick (negative = grazing, positive = regrowing)
+  if (state.sheep === 0 || state.grass <= 0) return 0
+  const consumption = state.sheep * PerSheepGrassCost
+  const afterConsumption = Math.max(0, state.grass - consumption)
+  const regen = 0.01 * afterConsumption * afterConsumption
+  return regen - consumption  // negative = draining, positive = regrowing
+}
+
+export function getHayRate(state: GameState): number {
+  // Returns hay change per tick when grass = 0 (always negative, -draining)
+  if (state.grass > 0 || state.hay <= 0 || state.sheep === 0) return 0
+  return -state.sheep * PerSheepHayCost
+}
+
+export function getGoldRate(state: GameState): number {
+  // Returns gold per second: wool shearing generates gold
+  // Each sheep grows wool at 1%/sec. Shear happens at wool = 100.
+  // Gold per shear = 5 * sheep, time to shear = (100 - currentWool) / sheep seconds
+  // We approximate: net gold/sec ≈ 5 when near 100 wool, 0 otherwise
+  // Better: 5 * sheep / ((100 - state.wool) / Math.max(1, state.sheep)) = 5 * state.sheep * state.sheep / (100 - state.wool)
+  if (state.sheep === 0 || state.wool >= 99) return 0
+  const timeToShear = (100 - state.wool) / Math.max(1, state.sheep)
+  return (5 * state.sheep) / timeToShear
+}
+
 export function woolGrow(state: GameState): GameState {
   if (state.wool >= 100) {
-    // Shear trigger: reset wool, award gold
-    return {
-      ...state,
-      wool: 0,
-      gold: state.gold + 5 * state.sheep,
-    }
+    return { ...state, wool: 0, gold: state.gold + 5 * state.sheep }
   }
   return { ...state, wool: Math.min(100, state.wool + state.sheep) }
 }
@@ -88,14 +108,37 @@ export function buySheep(state: GameState): GameState | null {
   return { ...state, gold: state.gold - 15, sheep: state.sheep + 1 }
 }
 
+const GoldPerHayPercent = 300  // gold cost per 1% of hay purchased
+
+export function buyEmergencyHay(state: GameState, targetHay: number): GameState | null {
+  const current = state.hay
+  const needed = Math.min(targetHay, 100) - current
+  if (needed <= 0) return null
+  const cost = needed * GoldPerHayPercent
+  if (state.gold < cost) return null
+  return { ...state, gold: state.gold - cost, hay: targetHay, deathCounter: 0 }
+}
+
+export function canBuyEmergencyHay(state: GameState, targetHay: number): boolean {
+  const current = state.hay
+  const needed = Math.min(targetHay, 100) - current
+  if (needed <= 0) return true
+  const cost = needed * GoldPerHayPercent
+  return state.gold >= cost
+}
+
+export function emergencyHayCost(state: GameState, targetHay: number): number {
+  const current = state.hay
+  const needed = Math.max(0, Math.min(targetHay, 100) - current)
+  return needed * GoldPerHayPercent
+}
+
 /** Advance all timers by a given amount (seconds). */
 export function tick(state: GameState, seconds: number): GameState {
   let s = state
-  // Wool grows 1% * sheep per second
   for (let i = 0; i < seconds; i++) {
     s = woolGrow(s)
   }
-  // Grass/hay system: 2.5-min ticks (150 seconds)
   const grassTicks = Math.floor(seconds / 150)
   for (let i = 0; i < grassTicks; i++) {
     s = grassDecay(s)

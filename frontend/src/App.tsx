@@ -5,9 +5,17 @@ import {
   grassDecay,
   woolGrow,
   buySheep as doBuySheep,
+  buyEmergencyHay as doBuyEmergencyHay,
+  canBuyEmergencyHay,
+  emergencyHayCost,
+  getGrassRate,
+  getHayRate,
+  getGoldRate,
 } from './gameLogic'
 
 const STORAGE_KEY = 'farmState'
+const HAY_TIERS = [25, 50, 75, 100]
+const TICK_DURATION_SECONDS = 150  // 2.5 minutes
 
 function clamp(value: number): number {
   return Math.max(0, Math.min(100, value))
@@ -18,7 +26,6 @@ function loadFromStorage() {
     const saved = sessionStorage.getItem(STORAGE_KEY)
     if (saved) {
       const parsed = JSON.parse(saved)
-      // Merge with initialState so new fields (hay, deathCounter) get defaults
       return { ...initialState, ...parsed }
     }
   } catch { /* ignore parse errors */ }
@@ -37,7 +44,7 @@ function App() {
   useEffect(() => {
     const interval = setInterval(() => {
       setState(grassDecay)
-    }, 2.5 * 60 * 1000)
+    }, TICK_DURATION_SECONDS * 1000)
 
     return () => clearInterval(interval)
   }, [])
@@ -52,14 +59,11 @@ function App() {
   }, [])
 
   // Auto-buy: purchase when gold >= 15 and increases past the last gold value.
-  // When gold drops (manual purchase / higher deduction), reset the baseline
-  // so future gold increases can trigger purchases again.
   const lastBoughtGold = useRef<number>(state.gold)
 
   useEffect(() => {
     if (state.autoBuySheep) {
       if (state.gold < lastBoughtGold.current) {
-        // Gold dropped — reset baseline so next increase triggers a buy
         lastBoughtGold.current = 0
       } else if (state.gold >= 15 && state.gold > lastBoughtGold.current) {
         lastBoughtGold.current = state.gold
@@ -77,10 +81,22 @@ function App() {
     if (next) setState(next)
   }
 
+  // Compute rates once per render (consistent across all UI elements)
+  const grassRate = getGrassRate(state)  // %/tick (positive = regrowing, negative = grazing)
+  const hayRate = getHayRate(state)  // %/tick (negative = draining when grass = 0)
+  const goldRate = getGoldRate(state)  // gold/sec (net gold generation)
+
+  // Emergency hay: buy 25/50/75/100% at 300g per hay %
+  const buyHay = (target: number) => {
+    const next = doBuyEmergencyHay(state, target)
+    if (next) setState(next)
+  }
+
   return (
     <div className="farm">
       <h1 className="farm-title">My Farm</h1>
 
+      {/* Grass row: bar + rate */}
       <div className="grass-row">
         <div className="bar-container">
           <div className="bar-label">
@@ -89,10 +105,16 @@ function App() {
           <div className="bar">
             <div className="fill grass" style={{ width: `${clamp(state.grass)}%` }} />
           </div>
-          <span className="bar-value">{Math.round(clamp(state.grass))}%</span>
+          <div className="bar-value-row">
+            <span className="bar-value grass-val">{clamp(state.grass)}%</span>
+            <span className={`rate ${grassRate >= 0 ? 'positive' : 'negative'}`}>
+              {grassRate >= 0 ? '+' : ''}{grassRate.toFixed(1)}%/tick
+            </span>
+          </div>
         </div>
       </div>
 
+      {/* Hay row: bar + rate + buy buttons (when grass = 0) */}
       <div className="hay-row">
         <div className="bar-container">
           <div className="bar-label">
@@ -101,10 +123,35 @@ function App() {
           <div className="bar">
             <div className="fill hay" style={{ width: `${clamp(state.hay)}%` }} />
           </div>
-          <span className="bar-value">{Math.round(clamp(state.hay))}%</span>
+          <div className="bar-value-row">
+            <span className="bar-value hay-val">{clamp(state.hay)}%</span>
+            <span className={`rate ${hayRate !== 0 ? 'negative' : 'positive'}`}>
+              {hayRate === 0 ? '—' : `${hayRate.toFixed(1)}%/tick`}
+            </span>
+          </div>
         </div>
+
+        {state.grass === 0 && (
+          <div className="hay-buy-row">
+            {HAY_TIERS.map((tier) => {
+              const cost = emergencyHayCost(state, tier)
+              const canBuy = canBuyEmergencyHay(state, tier)
+              return (
+                <button
+                  key={tier}
+                  className={`hay-buy-btn ${canBuy ? 'affordable' : ''}`}
+                  onClick={() => buyHay(tier)}
+                  disabled={!canBuy}
+                >
+                  {tier}% — {cost}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </div>
 
+      {/* Wool row: bar + gold/s */}
       <div className="wool-row">
         <div className="bar-container">
           <div className="bar-label">
@@ -113,10 +160,15 @@ function App() {
           <div className="bar">
             <div className="fill wool" style={{ width: `${clamp(state.wool)}%` }} />
           </div>
-          <span className="bar-value">{Math.round(clamp(state.wool))}%</span>
+          <div className="bar-value-row">
+            <span className={`gold-rate ${goldRate > 0 ? 'positive' : 'negative'}`}>
+              {goldRate > 0 ? `+${goldRate.toFixed(1)}` : '—'} gold/s
+            </span>
+          </div>
         </div>
       </div>
 
+      {/* Sheep row */}
       <div className="sheep-row">
         {state.sheep <= 5
           ? Array.from({ length: state.sheep }, (_, i) => (
@@ -130,6 +182,7 @@ function App() {
             )}
       </div>
 
+      {/* Sheep buy row */}
       <div className="buy-controls">
         <button
           className="buy-btn"
@@ -148,6 +201,7 @@ function App() {
         </button>
       </div>
 
+      {/* Gold display */}
       <div className="gold-display">
         <span className="coin">🪙</span> {state.gold}
       </div>

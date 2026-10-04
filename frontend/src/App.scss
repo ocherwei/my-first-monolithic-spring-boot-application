@@ -1,10 +1,10 @@
 $bg-color: #0f0f0f;
 $text-color: #ffffff;
 $green: #4caf50;
-$wool-color: #f5e6c8;
+$red: #ff4444;
 $gold-color: #ffd700;
 $hay-color: #f0d060;
-$hay-pale: #fdf6c4;
+$wool-color: #f5e6c8;
 
 .farm {
   display: flex;
@@ -74,6 +74,27 @@ $hay-pale: #fdf6c4;
     }
   }
 
+  .bar-value-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    min-height: 20px;
+  }
+
+  .bar-value {
+    color: #666;
+    font-size: 12px;
+  }
+
+  .bar-value.grass-val {
+    color: $green;
+  }
+
+  .bar-value.hay-val {
+    color: $hay-color;
+  }
+
   .bar-icon {
     margin-right: 4px;
     filter: sepia(1) saturate(1.5);
@@ -87,9 +108,17 @@ $hay-pale: #fdf6c4;
     }
   }
 
-  .bar-value {
-    color: #666;
-    font-size: 12px;
+  .rate {
+    font-size: 11px;
+    font-weight: 500;
+
+    &.positive {
+      color: $green;
+    }
+
+    &.negative {
+      color: $red;
+    }
   }
 
   .sheep-row {
@@ -179,6 +208,60 @@ $hay-pale: #fdf6c4;
     .coin {
       user-select: none;
       filter: sepia(1) saturate(2);
+    }
+  }
+
+  .gold-rate {
+    font-size: 12px;
+    font-weight: 500;
+
+    &.positive {
+      color: $gold-color;
+    }
+
+    &.negative {
+      color: #555;
+    }
+  }
+
+  .hay-buy-row {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 320px;
+  }
+
+  .hay-buy-btn {
+    padding: 5px 8px;
+    font-size: 9px;
+    font-weight: 500;
+    background: #1a1a1a;
+    color: #555;
+    border: 1px solid #333;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    white-space: nowrap;
+
+    &:not(:disabled) {
+      color: $red;
+      border-color: $red;
+      box-shadow: 0 0 4px rgba($red, 0.3);
+
+      &:hover {
+        background: #2a1515;
+        box-shadow: 0 0 8px rgba($red, 0.5);
+      }
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.25;
+      color: #444;
+      border-color: #333;
+      box-shadow: none;
     }
   }
 }
