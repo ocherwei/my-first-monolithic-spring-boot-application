@@ -4,6 +4,7 @@ import {
   grassDecay,
   woolGrow,
   buySheep,
+  buyEmergencyHay,
   tick,
 } from './gameLogic'
 
@@ -210,6 +211,48 @@ describe('buySheep', () => {
     expect(result).not.toBeNull()
     expect(result!.grass).toBe(50)
     expect(result!.wool).toBe(30)
+  })
+})
+
+describe('buyEmergencyHay', () => {
+  it('buys 50% hay (costs 25,000 gold: 50 * 500)', () => {
+    const result = buyEmergencyHay({ ...initialState, grass: 0, hay: 0, gold: 25000 }, 50)
+    expect(result).not.toBeNull()
+    expect(result!.hay).toBe(50)
+    expect(result!.gold).toBe(0) // 25000 - 25000
+    expect(result!.deathCounter).toBe(0)
+  })
+
+  it('buys 100% hay (costs 50,000 gold: 100 * 500)', () => {
+    const result = buyEmergencyHay({ ...initialState, grass: 0, hay: 0, gold: 50000 }, 100)
+    expect(result).not.toBeNull()
+    expect(result!.hay).toBe(100)
+    expect(result!.gold).toBe(0) // 50000 - 50000
+  })
+
+  it('buys partial hay (fill to 50% from 30 = 20% * 500 = 10,000)', () => {
+    const result = buyEmergencyHay({ ...initialState, grass: 0, hay: 30, gold: 10000 }, 50)
+    expect(result).not.toBeNull()
+    expect(result!.hay).toBe(50)
+    expect(result!.gold).toBe(0) // 10000 - 10000
+  })
+
+  it('does nothing when already at or above target', () => {
+    const result = buyEmergencyHay({ ...initialState, grass: 0, hay: 60, gold: 50000 }, 50)
+    expect(result).toBeNull()
+  })
+
+  it('does nothing when not enough gold', () => {
+    const result = buyEmergencyHay({ ...initialState, grass: 0, hay: 0, gold: 24999 }, 50)
+    expect(result).toBeNull()
+  })
+
+  it('does not change other fields', () => {
+    const state = { ...initialState, grass: 0, hay: 0, wool: 50, sheep: 3, gold: 25000 }
+    const result = buyEmergencyHay(state, 50)
+    expect(result).not.toBeNull()
+    expect(result!.wool).toBe(50)
+    expect(result!.sheep).toBe(3)
   })
 })
 

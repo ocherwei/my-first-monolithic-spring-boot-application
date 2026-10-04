@@ -5,6 +5,7 @@ import {
   grassDecay,
   woolGrow,
   buySheep as doBuySheep,
+  buyEmergencyHay as doBuyEmergencyHay,
 } from './gameLogic'
 
 const STORAGE_KEY = 'farmState'
@@ -77,6 +78,20 @@ function App() {
     if (next) setState(next)
   }
 
+  // Emergency hay: 500 gold per hay %
+  const buyHalfHay = () => {
+    const next = doBuyEmergencyHay(state, 50)
+    if (next) setState(next)
+  }
+
+  const buyFullHay = () => {
+    const next = doBuyEmergencyHay(state, 100)
+    if (next) setState(next)
+  }
+
+  const halfCost = Math.max(0, 50 - state.hay) * 500
+  const fullCost = Math.max(0, 100 - state.hay) * 500
+
   return (
     <div className="farm">
       <h1 className="farm-title">My Farm</h1>
@@ -147,6 +162,25 @@ function App() {
           Auto: {state.autoBuySheep ? 'ON' : 'OFF'}
         </button>
       </div>
+
+      {state.grass === 0 && (
+        <div className="emergency-controls">
+          <button
+            className="emergency-btn half"
+            onClick={buyHalfHay}
+            disabled={state.gold < halfCost}
+          >
+            50% Hay — {halfCost} <span className="btn-coin">🪙</span>
+          </button>
+          <button
+            className="emergency-btn full"
+            onClick={buyFullHay}
+            disabled={state.gold < fullCost}
+          >
+            100% Hay — {fullCost} <span className="btn-coin">🪙</span>
+          </button>
+        </div>
+      )}
 
       <div className="gold-display">
         <span className="coin">🪙</span> {state.gold}
