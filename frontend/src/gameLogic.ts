@@ -88,17 +88,6 @@ export function buySheep(state: GameState): GameState | null {
   return { ...state, gold: state.gold - 15, sheep: state.sheep + 1 }
 }
 
-const GoldPerHayPercent = 500  // gold cost per 1% of hay
-
-export function buyEmergencyHay(state: GameState, targetHay: number): GameState | null {
-  const current = state.hay
-  const needed = Math.min(targetHay, 100) - current
-  if (needed <= 0) return null  // already at or above target
-  const cost = needed * GoldPerHayPercent
-  if (state.gold < cost) return null
-  return { ...state, gold: state.gold - cost, hay: targetHay, deathCounter: 0 }
-}
-
 /** Advance all timers by a given amount (seconds). */
 export function tick(state: GameState, seconds: number): GameState {
   let s = state
