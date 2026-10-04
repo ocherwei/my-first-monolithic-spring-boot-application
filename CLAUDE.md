@@ -19,9 +19,9 @@ This project is a learning project for Spring Boot microservices, targeting a be
 ## Current Project Structure (monorepo)
 ```
 pom.xml                          # Maven build (server sources + resources)
-package.json                     # Frontend deps + scripts (build, test, dev)
-vite.config.ts                   # Vite config (React plugin, dev proxy)
 frontend/
+  package.json                   # Frontend deps + scripts (build, test, dev)
+  vite.config.ts                 # Vite config (React plugin, dev proxy)
   src/
     App.tsx                      # React component (UI + game loops)
     main.tsx                     # Entry point
@@ -29,6 +29,7 @@ frontend/
     gameLogic.test.ts            # 43 unit tests (Vitest)
     App.scss                     # Farm UI styles
   node_modules/
+  dist/                          # Built frontend (output of `npm run build`)
 server/
   src/main/java/com/example/helloworld/
     HelloWorldApplication.java     # Spring Boot entry point
@@ -36,7 +37,7 @@ server/
     IndexController.java           # Forward / → index.html (SPA)
 server/src/main/resources/
   application.properties
-  static/                          # Built frontend copied here (index.html + assets/)
+  static/                        # Built frontend copied here (index.html + assets/)
 ```
 
 ## Run Test
@@ -47,9 +48,9 @@ When the user says "test":
 
 ## Deploy
 When the user says "deploy" (and tests pass):
-1. User runs: `npm run build`
-   - `tsc -b && vite build` → outputs to `./dist/` (project root)
-2. From project root: `cp -Rf dist/* server/src/main/resources/static/`
+1. `cd frontend && npm run build`
+   - `tsc -b && vite build` → outputs to `./frontend/dist/`
+2. From project root: `cp -Rf frontend/dist/* server/src/main/resources/static/`
    - Copies built files into Spring Boot's static directory
 3. Kill any existing server on port 8080: `lsof -i :8080 | awk '{print $2}' | xargs -r kill`
 4. `mvn spring-boot:run`
