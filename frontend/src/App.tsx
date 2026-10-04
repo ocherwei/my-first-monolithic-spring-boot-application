@@ -9,10 +9,18 @@ import {
 
 const STORAGE_KEY = 'farmState'
 
+function clamp(value: number): number {
+  return Math.max(0, Math.min(100, value))
+}
+
 function loadFromStorage() {
   try {
     const saved = sessionStorage.getItem(STORAGE_KEY)
-    if (saved) return JSON.parse(saved)
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      // Merge with initialState so new fields (hay, deathCounter) get defaults
+      return { ...initialState, ...parsed }
+    }
   } catch { /* ignore parse errors */ }
   return initialState
 }
@@ -25,11 +33,11 @@ function App() {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state))
   }, [state])
 
-  // Grass decays: 10% + 5% per extra sheep every 5 minutes
+  // Grass/hay system: 2.5-min ticks (grass → hay → death phases)
   useEffect(() => {
     const interval = setInterval(() => {
       setState(grassDecay)
-    }, 5 * 60 * 1000)
+    }, 2.5 * 60 * 1000)
 
     return () => clearInterval(interval)
   }, [])
@@ -75,21 +83,37 @@ function App() {
 
       <div className="grass-row">
         <div className="bar-container">
-          <div className="bar-label">Grass</div>
-          <div className="bar">
-            <div className="fill grass" style={{ width: `${state.grass}%` }} />
+          <div className="bar-label">
+            <span className="bar-icon grass-icon">🌱</span>Grass
           </div>
-          <span className="bar-value">{state.grass}%</span>
+          <div className="bar">
+            <div className="fill grass" style={{ width: `${clamp(state.grass)}%` }} />
+          </div>
+          <span className="bar-value">{Math.round(clamp(state.grass))}%</span>
+        </div>
+      </div>
+
+      <div className="hay-row">
+        <div className="bar-container">
+          <div className="bar-label">
+            <span className="bar-icon hay-icon">🌾</span>Hay
+          </div>
+          <div className="bar">
+            <div className="fill hay" style={{ width: `${clamp(state.hay)}%` }} />
+          </div>
+          <span className="bar-value">{Math.round(clamp(state.hay))}%</span>
         </div>
       </div>
 
       <div className="wool-row">
         <div className="bar-container">
-          <div className="bar-label">Wool</div>
-          <div className="bar">
-            <div className="fill wool" style={{ width: `${state.wool}%` }} />
+          <div className="bar-label">
+            <span className="bar-icon wool-icon">🧶</span>Wool
           </div>
-          <span className="bar-value">{Math.round(state.wool)}%</span>
+          <div className="bar">
+            <div className="fill wool" style={{ width: `${clamp(state.wool)}%` }} />
+          </div>
+          <span className="bar-value">{Math.round(clamp(state.wool))}%</span>
         </div>
       </div>
 

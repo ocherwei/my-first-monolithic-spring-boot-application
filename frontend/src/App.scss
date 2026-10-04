@@ -3,6 +3,8 @@ $text-color: #ffffff;
 $green: #4caf50;
 $wool-color: #f5e6c8;
 $gold-color: #ffd700;
+$hay-color: #f0d060;
+$hay-pale: #fdf6c4;
 
 .farm {
   display: flex;
@@ -23,7 +25,8 @@ $gold-color: #ffd700;
   }
 
   .grass-row,
-  .wool-row {
+  .wool-row,
+  .hay-row {
     width: 240px;
     display: flex;
     flex-direction: column;
@@ -64,6 +67,23 @@ $gold-color: #ffd700;
       &.wool {
         background: $wool-color;
       }
+
+      &.hay {
+        background: $hay-color;
+      }
+    }
+  }
+
+  .bar-icon {
+    margin-right: 4px;
+    filter: sepia(1) saturate(1.5);
+
+    &.grass-icon {
+      filter: sepia(0) saturate(1);
+    }
+
+    &.wool-icon {
+      filter: sepia(1) saturate(0.5) brightness(1.2);
     }
   }
 

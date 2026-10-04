@@ -19,6 +19,16 @@ This project is a learning project for Spring Boot microservices, targeting a be
 ## Current Project Structure (monorepo)
 ```
 pom.xml                          # Maven build (server sources + resources)
+package.json                     # Frontend deps + scripts (build, test, dev)
+vite.config.ts                   # Vite config (React plugin, dev proxy)
+frontend/
+  src/
+    App.tsx                      # React component (UI + game loops)
+    main.tsx                     # Entry point
+    gameLogic.ts                 # Pure game state functions (no React, testable)
+    gameLogic.test.ts            # 43 unit tests (Vitest)
+    App.scss                     # Farm UI styles
+  node_modules/
 server/
   src/main/java/com/example/helloworld/
     HelloWorldApplication.java     # Spring Boot entry point
@@ -27,30 +37,21 @@ server/
 server/src/main/resources/
   application.properties
   static/                          # Built frontend copied here (index.html + assets/)
-frontend/
-  package.json                     # Dependencies + scripts (build, test, dev)
-  vite.config.ts                   # Vite config (React plugin, dev proxy)
-  frontend/src/
-    App.tsx                        # Single React component (UI + game loops)
-    gameLogic.ts                   # Pure game state functions (no React, testable)
-    gameLogic.test.ts              # 23 unit tests (Vitest)
-    App.scss                       # Farm UI styles
-    index.scss                     # Global styles
 ```
 
 ## Run Test
 When the user says "test":
 1. `cd frontend && npm test`
    - Runs Vitest: `vitest run`
-   - Must pass all 23 tests before deploying
+   - Must pass all 43 tests before deploying
 
 ## Deploy
 When the user says "deploy" (and tests pass):
-1. `cd frontend && npm run build`
-   - `tsc -b && vite build` → outputs to `frontend/dist/`
-2. `cp -Rf frontend/dist/* server/src/main/resources/static/`
-   - Replaces static files with fresh build
-3. Kill any existing server on port 8080 (`lsof -i :8080 | awk '{print $2}'`)
+1. User runs: `npm run build`
+   - `tsc -b && vite build` → outputs to `./dist/` (project root)
+2. From project root: `cp -Rf dist/* server/src/main/resources/static/`
+   - Copies built files into Spring Boot's static directory
+3. Kill any existing server on port 8080: `lsof -i :8080 | awk '{print $2}' | xargs -r kill`
 4. `mvn spring-boot:run`
    - Starts Spring Boot on port 8080
    - Serve built frontend from `static/` + proxy API calls
@@ -59,9 +60,23 @@ When the user says "deploy" (and tests pass):
 See ~/Coding/Knowledge/SpringBootLearning.md for full design decisions and frontend/backend choices.
 
 ## Farm Game Mechanics
-**State:** `{ grass: 0-100, wool: 0-100, gold: number, sheep: number, autoBuySheep: boolean }`
-- **Grass decay:** `10 + max(0, sheep - 1) * 5` per 5-minute tick. When grass hits 0, it resets to 100 (cyclical renewal).
+**State:** `{ grass: 0-100, hay: 0-100, wool: 0-100, gold: number, sheep: number, autoBuySheep: boolean, deathCounter: number }`
+- **Grass/tick:** 2.5 minutes (was 5 min). Regenerates 9% per tick, sheep consume 3% each per tick.
+- **3-phase grass system:**
+  1. **Grass phase:** When grass > 0, sheep eat 3% per sheep. Grass regenerates 9% after consumption. If grass ≥ 100 after regen, excess overflows to hay.
+  2. **Hay phase:** When grass = 0, sheep consume 5% per sheep per tick from hay (stored in silo).
+  3. **Death phase:** When both grass = 0 and hay = 0, 1 sheep dies every 3 ticks (7.5 minutes).
+- **Hay overflow:** When grass ≥ 100 after sheep eat + regen, excess over 100 goes to hay (capped at 100).
 - **Wool growth:** `sheep %` per second. When wool reaches 100, it triggers a shear: wool resets to 0, gold increases by `5 * sheep`.
-- **Buy sheep:** costs 15 gold. Each sheep increases wool growth rate (+sheep %/sec) and grass decay (+5%/tick per extra sheep beyond 1).
+- **Buy sheep:** costs 15 gold. Each sheep increases wool growth rate (+sheep %/sec) and grass consumption (+3%/tick per sheep).
 - **Auto-buy:** On/off toggle next to the buy button. When ON, the game watches `state.gold` — whenever gold increases (from woolShear) and reaches 15+, a sheep is purchased immediately. When OFF, manual buying is re-enabled. The auto-buy ref is reset to 0 when toggled off.
-- **Edge:** First sheep costs 0 gold (starts at 10). Grass cycle at 1 sheep = ~50 min; at 5 sheep = ~15 min.
+- **Edge:** Starts with 1 sheep, gold: 10. Grass never auto-regenerates to 100 (no cyclical reset) — once depleted, the hay/silo chain begins.
+
+### Lifecycle with Option B (3% per sheep consumption, 9% regen)
+| Sheep | Net grass change/tick | Hay production | Time to deplete from 100 |
+|-------|----------------------|---------------|------------------------|
+| 0 | +3% (fills to 100) | 9%/tick (full silo ~2h) | Prep time ~2h 45m |
+| 1 | +6% (when at 100) | 6%/tick (full silo ~17m) | Buffer ~3h |
+| 2 | +3% (when at 100) | 3%/tick (full silo ~33m) | Buffer ~2h |
+| 3 | 0% (break-even) | 0% (full silo not possible) | Buffer ~0, hay drains when grass=0 |
+| 5 | -3% (depletes fast) | None | Buffer ~40m (hay 5%/sheep/tick) |
